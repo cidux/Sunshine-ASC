@@ -1877,4 +1877,27 @@ namespace platf {
   std::string resolve_render_device() {
     return {};
   }
+  std::string get_followed_monitor(const std::string &mode) {
+    HMONITOR monitor = nullptr;
+
+    if (mode == "focused") {
+      HWND window = GetForegroundWindow();
+      if (!window) return {};
+      monitor = MonitorFromWindow(window, MONITOR_DEFAULTTONEAREST);
+    } else if (mode == "mouse") {
+      POINT cursor {};
+      if (!GetCursorPos(&cursor)) return {};
+      monitor = MonitorFromPoint(cursor, MONITOR_DEFAULTTONEAREST);
+    } else {
+      return {};
+    }
+
+    if (!monitor) return {};
+
+    MONITORINFOEXW info {};
+    info.cbSize = sizeof(info);
+    if (!GetMonitorInfoW(monitor, &info)) return {};
+
+    return utf_utils::to_utf8(std::wstring {info.szDevice});
+  }
 }  // namespace platf

@@ -137,6 +137,9 @@ namespace config {
     std::string encoder;  ///< Encoder backend name selected by configuration.
     std::string adapter_name;  ///< Display adapter name selected in configuration.
     std::string output_name;  ///< Display output name selected in configuration.
+    std::string monitor_switching_mode;  ///< Monitor switching behavior: manual, focused, or mouse.
+    int monitor_poll_interval_ms;  ///< Polling interval in milliseconds.
+    int monitor_debounce_ms;  ///< Switching debounce in milliseconds.
 
     /**
      * @brief Display-device integration settings.

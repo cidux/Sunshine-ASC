@@ -251,6 +251,9 @@
               "install_steam_audio_drivers": "enabled",
               "adapter_name": "",
               "output_name": "",
+              "monitor_switching_mode": "manual",
+              "monitor_poll_interval_ms": 25,
+              "monitor_debounce_ms": 50,
               "dd_configuration_option": "disabled",
               "dd_resolution_option": "auto",
               "dd_manual_resolution": "",
@@ -500,6 +503,18 @@
 
         // create a temp copy of this.config to use for the post request
         let config = this.serialize();
+
+        // Validate monitor switching timing before saving.
+        const clampMonitorTiming = (value, fallback, minimum, maximum) => {
+          const number = Number(value);
+          return Math.min(maximum, Math.max(minimum, Number.isFinite(number) ? Math.round(number) : fallback));
+        };
+
+        config.monitor_poll_interval_ms = clampMonitorTiming(config.monitor_poll_interval_ms, 25, 10, 1000);
+        config.monitor_debounce_ms = clampMonitorTiming(config.monitor_debounce_ms, 50, 0, 5000);
+
+        this.config.monitor_poll_interval_ms = config.monitor_poll_interval_ms;
+        this.config.monitor_debounce_ms = config.monitor_debounce_ms;
 
         // delete default values from this.config
         this.tabs.forEach(tab => {

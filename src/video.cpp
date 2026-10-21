@@ -27,6 +27,9 @@ extern "C" {
 // local includes
 #include "cbs.h"
 #include "config.h"
+#ifdef _WIN32
+  #include "platform/windows/misc.h"
+#endif
 #include "display_device.h"
 #include "globals.h"
 #include "input.h"
@@ -1549,6 +1552,33 @@ namespace video {
     }
   }
 
+#ifdef _WIN32
+  /**
+   * @brief Find the display index containing the focused window or mouse cursor.
+   * @param display_names Available display device names.
+   * @return Matching display index, or -1 if no matching display is found.
+   */
+  int get_followed_display_index(const std::vector<std::string> &display_names) {
+    const auto &mode = config::video.monitor_switching_mode;
+
+    if (mode != "focused" && mode != "mouse") {
+      return -1;
+    }
+
+    const std::string monitor_name = platf::get_followed_monitor(mode);
+    if (monitor_name.empty()) {
+      return -1;
+    }
+
+    for (std::size_t index = 0; index < display_names.size(); ++index) {
+      if (display_names[index] == monitor_name) {
+        return static_cast<int>(index);
+      }
+    }
+
+    return -1;
+  }
+#endif
   /**
    * @brief Run the shared display capture thread for asynchronous encoding.
    *
@@ -1650,6 +1680,11 @@ namespace video {
       }
     };
 
+#ifdef _WIN32
+    auto follow_last_check = std::chrono::steady_clock::time_point {};
+    auto follow_candidate_since = std::chrono::steady_clock::time_point {};
+    int follow_candidate_display = -1;
+#endif
     auto pull_free_image_callback = [&](std::shared_ptr<platf::img_t> &img_out) -> bool {
       img_out.reset();
       while (capture_ctx_queue->running()) {
@@ -1724,6 +1759,35 @@ namespace video {
           capture_ctxs.emplace_back(std::move(*capture_ctx_queue->pop()));
         }
 
+#ifdef _WIN32
+        // Automatically follow the focused window or mouse cursor.
+        if (config::video.monitor_switching_mode != "manual" && !switch_display_event->peek()) {
+          auto &last_check = follow_last_check;
+          auto &candidate_since = follow_candidate_since;
+          auto &candidate_display = follow_candidate_display;
+
+          const auto now = std::chrono::steady_clock::now();
+
+          if (now - last_check >= std::chrono::milliseconds(config::video.monitor_poll_interval_ms)) {
+            last_check = now;
+
+            const int target_display = get_followed_display_index(display_names);
+
+            if (target_display < 0 || target_display == display_p) {
+              candidate_display = -1;
+            } else if (config::video.monitor_debounce_ms == 0) {
+              switch_display_event->raise(target_display);
+              candidate_display = -1;
+            } else if (target_display != candidate_display) {
+              candidate_display = target_display;
+              candidate_since = now;
+            } else if (now - candidate_since >= std::chrono::milliseconds(config::video.monitor_debounce_ms)) {
+              switch_display_event->raise(target_display);
+              candidate_display = -1;
+            }
+          }
+        }
+#endif
         if (switch_display_event->peek()) {
           artificial_reinit = true;
           return false;
@@ -2738,6 +2802,11 @@ namespace video {
       synced_sessions.emplace_back(std::move(*synced_session));
     }
 
+#ifdef _WIN32
+    auto sync_follow_last_check = std::chrono::steady_clock::time_point {};
+    auto sync_follow_candidate_since = std::chrono::steady_clock::time_point {};
+    int sync_follow_candidate_display = -1;
+#endif
     auto ec = platf::capture_e::ok;
     while (encode_session_ctx_queue.running()) {
       auto push_captured_image_callback = [&](std::shared_ptr<platf::img_t> &&img, bool frame_captured) -> bool {
@@ -2805,6 +2874,32 @@ namespace video {
           ++pos;
         })
 
+#ifdef _WIN32
+        // Follow the focused window or mouse with a short debounce.
+        if (!switch_display_event->peek() && (config::video.monitor_switching_mode == "focused" ||
+            config::video.monitor_switching_mode == "mouse")) {
+          const auto now = std::chrono::steady_clock::now();
+
+          if (now - sync_follow_last_check >= std::chrono::milliseconds(config::video.monitor_poll_interval_ms)) {
+            sync_follow_last_check = now;
+
+            const int target_display = get_followed_display_index(display_names);
+
+            if (target_display < 0 || target_display == display_p) {
+              sync_follow_candidate_display = -1;
+            } else if (config::video.monitor_debounce_ms == 0) {
+              switch_display_event->raise(target_display);
+              sync_follow_candidate_display = -1;
+            } else if (target_display != sync_follow_candidate_display) {
+              sync_follow_candidate_display = target_display;
+              sync_follow_candidate_since = now;
+            } else if (now - sync_follow_candidate_since >= std::chrono::milliseconds(config::video.monitor_debounce_ms)) {
+              switch_display_event->raise(target_display);
+              sync_follow_candidate_display = -1;
+            }
+          }
+        }
+#endif
         if (switch_display_event->peek()) {
           ec = platf::capture_e::reinit;
           return false;
