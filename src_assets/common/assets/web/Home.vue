@@ -72,11 +72,25 @@
           {{ $t('index.installed_version_not_stable') }}
         </div>
 
-        <div v-else-if="(!preReleaseBuildAvailable || !notifyPreReleases) && !stableBuildAvailable && !buildVersionIsDirty">
+        <div v-else-if="ascVersion && !stableBuildAvailable && !buildVersionIsDirty && !ascReleaseError && isAscStableBuild">
           <div class="alert alert-success my-3">
             <check-circle :size="18" class="icon"></check-circle>
             {{ $t('index.version_latest') }}
           </div>
+        </div>
+
+        <!-- ASC release status -->
+        <div v-if="ascReleaseError" class="alert alert-secondary my-3">
+          <info :size="18" class="icon"></info>
+          Sunshine-ASC update information is unavailable.
+          <a href="https://github.com/cidux/Sunshine-ASC/releases"
+             target="_blank" rel="noopener noreferrer">View releases</a>
+        </div>
+
+        <div v-else-if="!isAscStableBuild && !stableBuildAvailable"
+             class="alert alert-info my-3">
+          <info :size="18" class="icon"></info>
+          You are running a Sunshine-ASC development or unpublished build.
         </div>
 
         <div v-if="notifyPreReleases && preReleaseBuildAvailable">
@@ -106,17 +120,49 @@
               <div class="d-flex align-items-center gap-3 flex-wrap">
                 <alert-circle :size="18" class="icon"></alert-circle>
                 <span>{{ $t('index.new_stable') }}</span>
-                <h5 class="mb-0">{{ githubVersion.release.name }}</h5>
+                <h5 class="mb-0">{{ ascVersion.release.name }}</h5>
               </div>
-              <a class="btn btn-success flex-shrink-0" :href="githubVersion.release.html_url" target="_blank">
+              <a class="btn btn-success flex-shrink-0" :href="ascVersion.release.html_url" target="_blank">
                 <download :size="18" class="icon"></download>
                 {{ $t('index.download') }}
               </a>
             </div>
 
             <!-- body row (full width) -->
-            <div class="markdown-body release-notes" v-html="convertMarkdownToHtml(githubVersion.release.body)"></div>
+            <div class="markdown-body release-notes" v-html="convertMarkdownToHtml(ascVersion.release.body)"></div>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Official upstream Sunshine releases (informational only) -->
+    <div class="card my-4">
+      <div class="card-body">
+        <h2>Official Sunshine</h2>
+        <p class="text-muted">
+          Upstream releases from LizardByte. These are shown for compatibility,
+          security notices, and release information. They are not Sunshine-ASC updates.
+        </p>
+
+        <div v-if="githubVersion?.release">
+          <div class="d-flex align-items-center justify-content-between gap-3 flex-wrap mb-3">
+            <div>
+              <strong>Latest upstream stable release</strong>
+              <div>{{ githubVersion.release.name || githubVersion.version }}</div>
+            </div>
+            <a class="btn btn-outline-secondary"
+               :href="githubVersion.release.html_url"
+               target="_blank"
+               rel="noopener noreferrer">
+              View official release
+            </a>
+          </div>
+          <div class="markdown-body release-notes"
+               v-html="convertMarkdownToHtml(githubVersion.release.body || '')"></div>
+        </div>
+
+        <div v-else class="text-muted">
+          Official Sunshine release information is currently unavailable.
         </div>
       </div>
     </div>
@@ -173,6 +219,8 @@
       return {
         version: null,
         githubVersion: null,
+        ascVersion: null,
+        ascReleaseError: false,
         notifyPreReleases: false,
         preReleaseVersion: null,
         loading: true,
@@ -201,6 +249,16 @@
           console.error('Failed to fetch permission status:', e);
         }
         console.log("Version: ", this.version.version)
+        // Sunshine-ASC releases are independent of upstream Sunshine releases.
+        try {
+          const response = await fetch("https://api.github.com/repos/cidux/Sunshine-ASC/releases/latest");
+          if (!response.ok) throw new Error(`GitHub API returned ${response.status}`);
+          const release = await response.json();
+          this.ascVersion = new SunshineVersion(release, null);
+        } catch (e) {
+          this.ascReleaseError = true;
+          console.warn("Unable to check Sunshine-ASC releases:", e);
+        }
         this.githubVersion = new SunshineVersion(await fetch("https://api.github.com/repos/LizardByte/Sunshine/releases/latest").then((r) => r.json()), null);
         console.log("GitHub Version: ", this.githubVersion.version)
         this.preReleaseVersion = new SunshineVersion((await fetch("https://api.github.com/repos/LizardByte/Sunshine/releases").then((r) => r.json())).find(release => release.prerelease), null);
@@ -291,23 +349,32 @@
           [{ key: this.controllerEnabled ? 'index.virtualhid_optional_vigembus_desc' : 'index.virtualhid_optional_desc' }],
         );
       },
+      isAscStableBuild() {
+        return Boolean(
+          this.version?.version &&
+          /^(?:asc-v|v)?\d+\.\d+\.\d+$/.test(this.version.version) &&
+          this.ascVersion?.version &&
+          this.version.version.replace(/^(?:asc-v|v)/, '') ===
+            this.ascVersion.version.replace(/^(?:asc-v|v)/, '')
+        );
+      },
       installedVersionNotStable() {
-        if (!this.githubVersion || !this.version) {
-          return false;
-        }
-        return this.version.isGreater(this.githubVersion);
+        // ASC releases have their own version channel.
+        // Do not classify ASC builds using upstream Sunshine versions.
+        return false;
       },
       stableBuildAvailable() {
-        if (!this.githubVersion || !this.version) {
-          return false;
-        }
-        return this.githubVersion.isGreater(this.version);
+        // Only a newer stable ASC release is an ASC update.
+        return Boolean(
+          this.ascVersion &&
+          this.version &&
+          this.ascVersion.isGreater(this.version)
+        );
       },
       preReleaseBuildAvailable() {
-        if (!this.preReleaseVersion || !this.githubVersion || !this.version) {
-          return false;
-        }
-        return this.preReleaseVersion.isGreater(this.version) && this.preReleaseVersion.isGreater(this.githubVersion);
+        // ASC prerelease notifications will use the ASC release channel.
+        // Upstream prereleases must not trigger ASC update warnings.
+        return false;
       },
       buildVersionIsDirty() {
         return this.version.version?.split(".").length === 5 &&

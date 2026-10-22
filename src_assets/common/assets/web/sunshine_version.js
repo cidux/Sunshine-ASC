@@ -38,11 +38,15 @@ class SunshineVersion {
     if (!version) {
       return null;
     }
-    let v = version;
-    if (v.startsWith("v")) {
+    let v = version.trim();
+    // Sunshine-ASC release tags use asc-vMAJOR.MINOR.PATCH.
+    if (v.startsWith("asc-v")) {
+      v = v.substring(5);
+    } else if (v.startsWith("v")) {
       v = v.substring(1);
     }
-    return v.split('.').map(Number);
+    const match = v.match(/^(\d+)\.(\d+)\.(\d+)$/);
+    return match ? match.slice(1).map(Number) : null;
   }
 
   /**

@@ -68,8 +68,11 @@ jobs:
       - name: Configure
         env:
           MSYS2_PATH_TYPE: inherit
+          BRANCH: master
+          BUILD_VERSION: ${{ startsWith(github.ref, 'refs/tags/asc-v') && github.ref_name || '0.99.0' }}
         run: |
           export PATH="$PATH:$(cygpath "$NODEJS_PATH")"
+          export BUILD_VERSION="${BUILD_VERSION#asc-v}"
           cmake -S . -B build -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
             -DBUILD_WERROR=OFF \
@@ -78,18 +81,18 @@ jobs:
       - name: Build
         run: ninja -C build
 
-      - name: Package NSIS installer
+      - name: Package MSI installer
         run: |
           cd build
-          cpack -G NSIS
+          cpack -G WIX
           mkdir -p ../artifacts
-          cp cpack_artifacts/Sunshine-ASC-Windows-x64-Setup.exe ../artifacts/
+          cp cpack_artifacts/*.msi ../artifacts/Sunshine-ASC-Windows-x64.msi
 
       - name: Upload installer artifact
         uses: actions/upload-artifact@v4
         with:
           name: Sunshine-ASC-Windows-x64
-          path: artifacts/Sunshine-ASC-Windows-x64-Setup.exe
+          path: artifacts/Sunshine-ASC-Windows-x64.msi
           if-no-files-found: error
 
       - name: Publish GitHub Release
@@ -99,7 +102,6 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release create "${{ github.ref_name }}" `
-            "artifacts/Sunshine-ASC-Windows-x64-Setup.exe" `
+            "artifacts/Sunshine-ASC-Windows-x64.msi" `
             --title "Sunshine-ASC ${{ github.ref_name }}" `
-            --notes "Windows x64 installer with automatic monitor switching." `
-            --prerelease
+            --notes "Windows x64 MSI installer with automatic monitor switching."

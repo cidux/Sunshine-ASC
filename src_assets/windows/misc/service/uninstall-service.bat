@@ -1,7 +1,7 @@
 @echo off
 setlocal enabledelayedexpansion
 
-set "SERVICE_CONFIG_DIR=%LOCALAPPDATA%\LizardByte\Sunshine"
+set "SERVICE_CONFIG_DIR=%ProgramData%\Sunshine-ASC"
 set "SERVICE_CONFIG_FILE=%SERVICE_CONFIG_DIR%\service_start_type.txt"
 
 rem Save the current service start type to a file if the service exists

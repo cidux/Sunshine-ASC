@@ -6,8 +6,12 @@ for %%I in ("%~dp0\..") do set "ROOT_DIR=%%~fI"
 
 set SERVICE_NAME=SunshineService
 set "SERVICE_BIN=%ROOT_DIR%\tools\sunshinesvc.exe"
-set "SERVICE_CONFIG_DIR=%LOCALAPPDATA%\LizardByte\Sunshine"
+set "SERVICE_CONFIG_DIR=%ProgramData%\Sunshine-ASC"
 set "SERVICE_CONFIG_FILE=%SERVICE_CONFIG_DIR%\service_start_type.txt"
+set "LEGACY_CONFIG_FILE=%LOCALAPPDATA%\LizardByte\Sunshine\service_start_type.txt"
+if not exist "%SERVICE_CONFIG_FILE%" if exist "%LEGACY_CONFIG_FILE%" set "SERVICE_CONFIG_FILE=%LEGACY_CONFIG_FILE%"
+set "SYSTEM_LEGACY_CONFIG_FILE=%SystemRoot%\System32\config\systemprofile\AppData\Local\LizardByte\Sunshine\service_start_type.txt"
+if not exist "%SERVICE_CONFIG_FILE%" if exist "%SYSTEM_LEGACY_CONFIG_FILE%" set "SERVICE_CONFIG_FILE=%SYSTEM_LEGACY_CONFIG_FILE%"
 
 rem Set service to demand start. It will be changed to auto later if the user selected that option.
 set SERVICE_START_TYPE=demand
@@ -57,11 +61,45 @@ if exist "%SERVICE_CONFIG_FILE%" (
 
 echo Setting service start type set to: [!SERVICE_START_TYPE!]
 
-rem Run the sc command to create/reconfigure the service
-sc %SC_CMD% %SERVICE_NAME% binPath= "\"%SERVICE_BIN%\"" start= %SERVICE_START_TYPE% DisplayName= "Sunshine Service"
+rem Retry service registration if Windows is still deleting the previous service
+set /a WAIT_COUNT=0
+:register_service
+rem Recheck service existence because deletion may finish between retries
+sc qc %SERVICE_NAME% >nul 2>&1
+if errorlevel 1 (
+    set "SC_CMD=create"
+) else (
+    set "SC_CMD=config"
+)
+sc !SC_CMD! %SERVICE_NAME% binPath= "\"%SERVICE_BIN%\"" start= %SERVICE_START_TYPE% DisplayName= "Sunshine Service" > "%TEMP%\sunshine-service-register.log" 2>&1
+if not errorlevel 1 goto service_registered
+
+findstr /C:"1072" /C:"1073" "%TEMP%\sunshine-service-register.log" >nul
+if errorlevel 1 (
+    type "%TEMP%\sunshine-service-register.log"
+    echo ERROR: Failed to create or configure SunshineService.
+    exit /b 1
+)
+if !WAIT_COUNT! GEQ 15 (
+    type "%TEMP%\sunshine-service-register.log"
+    echo ERROR: SunshineService remained marked for deletion.
+    exit /b 1
+)
+ping -n 2 127.0.0.1 >nul
+set /a WAIT_COUNT+=1
+goto register_service
+
+:service_registered
+del "%TEMP%\sunshine-service-register.log" >nul 2>&1
 
 rem Set the description of the service
 sc description %SERVICE_NAME% "Sunshine is a self-hosted game stream host for Moonlight."
 
-rem Start the new service
+rem Start the new service unless it is configured as disabled
+if /I "!SERVICE_START_TYPE!"=="disabled" exit /b 0
 net start %SERVICE_NAME%
+if errorlevel 1 (
+    echo ERROR: Failed to start SunshineService.
+    exit /b 1
+)
+exit /b 0

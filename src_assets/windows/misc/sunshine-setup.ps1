@@ -403,10 +403,14 @@ if ($Action -eq "install") {
         -Status "Installing service" `
         -PercentComplete (($currentStep / $totalSteps) * 100)
     $installServiceScript = Join-Path $RootDir "scripts\install-service.bat"
-    Invoke-ScriptIfExist `
+    $serviceResult = Invoke-ScriptIfExist `
         -ScriptPath $installServiceScript `
         -Description "Installing Windows Service" `
         -Emoji "⚡"
+    if ($serviceResult -ne 0) {
+        Write-LogMessage -Message "Windows Service installation failed." -Level "Warning"
+        exit 1
+    }
     Write-Information ""
 
     # 5. Configure autostart
