@@ -56,7 +56,7 @@
     <!-- Version -->
     <div class="card my-4">
       <div class="card-body" v-if="version">
-        <h2>Version {{version.version}}</h2>
+        <h2>Automatic Screen Changer - Version {{version.version}}</h2>
 
         <div v-if="loading" class="my-3">
           {{ $t('index.loading_latest') }}
