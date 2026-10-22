@@ -343,6 +343,22 @@
         // create a temp copy of this.config to use for the post request
         let config = this.serialize();
 
+        // Validate automatic monitor-switching timing before saving.
+        const clampMonitorTiming = (key, fallback, min, max) => {
+          const value = Number(config[key] ?? fallback);
+          const corrected = Number.isFinite(value)
+            ? Math.min(max, Math.max(min, Math.round(value)))
+            : fallback;
+
+          config[key] = corrected;
+          this.config[key] = corrected;
+        };
+
+        if (this.platform === 'windows') {
+          clampMonitorTiming('monitor_poll_interval_ms', 25, 10, 1000);
+          clampMonitorTiming('monitor_debounce_ms', 50, 0, 5000);
+        }
+
         // delete default values from this.config
         this.tabs.forEach(tab => {
           Object.keys(tab.options).forEach(optionKey => {

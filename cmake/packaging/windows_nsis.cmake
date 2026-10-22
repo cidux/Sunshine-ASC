@@ -1,4 +1,8 @@
 # NSIS Packaging
+# Brand the installer independently while retaining Sunshine's
+# installation directory and upgrade registry identity.
+set(CPACK_NSIS_DISPLAY_NAME "Sunshine-ASC")
+set(CPACK_NSIS_PACKAGE_NAME "Sunshine-ASC")
 # see options at: https://cmake.org/cmake/help/latest/cpack_gen/nsis.html
 
 set(CPACK_NSIS_INSTALLED_ICON_NAME "${PROJECT__DIR}\\\\${PROJECT_EXE}")

@@ -52,4 +52,11 @@ namespace platf {
    * @return true if version info was successfully extracted, false otherwise.
    */
   bool getFileVersionInfo(const std::filesystem::path &file_path, std::string &version_str);
+  /**
+   * @brief Determine which Windows display contains the focused window or mouse cursor.
+   *
+   * @param mode "focused" or "mouse".
+   * @return Windows display device name, or an empty string if unavailable.
+   */
+  std::string get_followed_monitor(const std::string &mode);
 }  // namespace platf

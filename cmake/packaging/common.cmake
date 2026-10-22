@@ -1,8 +1,11 @@
 # common packaging
 
 # common cpack options
-set(CPACK_PACKAGE_NAME ${CMAKE_PROJECT_NAME})
-set(CPACK_PACKAGE_VENDOR "LizardByte")
+set(CPACK_PACKAGE_NAME "Sunshine-ASC")
+# Retain Sunshine's Windows uninstall registry identity so Sunshine-ASC
+# upgrades existing Sunshine installations instead of installing alongside them.
+set(CPACK_PACKAGE_INSTALL_REGISTRY_KEY "Sunshine")
+set(CPACK_PACKAGE_VENDOR "Sunshine-ASC")
 set(CPACK_PACKAGE_VERSION ${PROJECT_VERSION})
 set(CPACK_PACKAGE_VERSION_MAJOR ${PROJECT_VERSION_MAJOR})
 set(CPACK_PACKAGE_VERSION_MINOR ${PROJECT_VERSION_MINOR})
@@ -13,7 +16,7 @@ set(CPACK_PACKAGE_DESCRIPTION ${CMAKE_PROJECT_DESCRIPTION})
 set(CPACK_PACKAGE_HOMEPAGE_URL ${CMAKE_PROJECT_HOMEPAGE_URL})
 set(CPACK_RESOURCE_FILE_LICENSE ${PROJECT_SOURCE_DIR}/LICENSE)
 set(CPACK_PACKAGE_ICON ${PROJECT_SOURCE_DIR}/sunshine.png)
-set(CPACK_PACKAGE_FILE_NAME "${CMAKE_PROJECT_NAME}")
+set(CPACK_PACKAGE_FILE_NAME "Sunshine-ASC-Windows-x64-Setup")
 set(CPACK_STRIP_FILES YES)
 
 # Keep macOS assets in the Runtime component so app assets are installed

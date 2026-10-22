@@ -60,7 +60,7 @@ execute_process(COMMAND cmd.exe /c mklink /J "${shaders_in_build_dest_native}" "
 set(CPACK_PACKAGE_ICON "${CMAKE_SOURCE_DIR}\\\\sunshine.ico")
 
 # The name of the directory that will be created in C:/Program files/
-set(CPACK_PACKAGE_INSTALL_DIRECTORY "${CPACK_PACKAGE_NAME}")
+set(CPACK_PACKAGE_INSTALL_DIRECTORY "Sunshine")
 
 # Setting components groups and dependencies
 set(CPACK_COMPONENT_GROUP_CORE_EXPANDED true)

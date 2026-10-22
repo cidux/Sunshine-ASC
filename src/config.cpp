@@ -802,6 +802,9 @@ namespace config {
     {},  // encoder
     {},  // adapter_name
     {},  // output_name
+    "manual",  // monitor_switching_mode
+    25,  // monitor_poll_interval_ms
+    50,  // monitor_debounce_ms
 
     {
       video_t::dd_t::config_option_e::disabled,  // configuration_option
@@ -1731,6 +1734,16 @@ namespace config {
     string_f(vars, "encoder", video.encoder);
     string_f(vars, "adapter_name", video.adapter_name);
     string_f(vars, "output_name", video.output_name);
+    string_f(vars, "monitor_switching_mode", video.monitor_switching_mode);
+    int_f(vars, "monitor_poll_interval_ms", video.monitor_poll_interval_ms);
+    int_f(vars, "monitor_debounce_ms", video.monitor_debounce_ms);
+    video.monitor_poll_interval_ms = std::clamp(video.monitor_poll_interval_ms, 10, 1000);
+    video.monitor_debounce_ms = std::clamp(video.monitor_debounce_ms, 0, 5000);
+    if (video.monitor_switching_mode != "manual" &&
+        video.monitor_switching_mode != "focused" &&
+        video.monitor_switching_mode != "mouse") {
+      video.monitor_switching_mode = "manual";
+    }
 
     generic_f(vars, "dd_configuration_option", video.dd.configuration_option, dd::config_option_from_view);
     generic_f(vars, "dd_resolution_option", video.dd.resolution_option, dd::resolution_option_from_view);
