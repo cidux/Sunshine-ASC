@@ -43,6 +43,7 @@ jobs:
             mingw-w64-ucrt-x86_64-MinHook
             mingw-w64-ucrt-x86_64-nsis
             mingw-w64-ucrt-x86_64-qt6-static
+            mingw-w64-ucrt-x86_64-libtiff
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
